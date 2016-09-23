@@ -96,10 +96,14 @@ svg ellipse, svg line, svg g path, svg polyline, svg rect {
   stroke: #353535;
   stroke-width: 3; }
 svg text {
-  fill: #2a76dd;
-  stroke: #2a76dd; }
+  fill: #44497a;
+  stroke: #44497a; }
 
 .reveal pre code.hljs {
   background-color: #f0f0f0;
   color: #353535;
   max-height: 500px; }
+.reveal pre code.hljs mark {
+  background-color: inherit;
+  font-weight: bold;
+  text-decoration: underline; }

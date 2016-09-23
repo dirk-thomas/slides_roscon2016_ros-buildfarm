@@ -19,6 +19,30 @@
 
     <link rel="stylesheet" href="css/osrf.css">
 
+    <style>
+      #pull-request_rosdistro-code .hljs-attr:nth-child(4),
+      #pull-request_rosdistro-code .hljs-literal {
+        color: #c7254e;
+        font-weight: bold;
+      }
+      .reveal table.stats {
+        font-size: 0.7em;
+      }
+      .reveal table.stats th:not(:first-child) {
+        border-left: 1px solid;
+      }
+      .reveal table.stats th {
+        text-align: center;
+      }
+      .reveal table.stats th, .reveal table.stats td {
+        padding: 0 0.5em 0em 0.5em
+      }
+      .reveal table.stats td {
+        border-left: 1px solid;
+        text-align: right;
+      }
+    </style>
+
     <!-- Printing and PDF exports -->
     <script>
       var link = document.createElement( 'link' );
@@ -49,6 +73,7 @@
         <section>
           <h1>The ROS build farm</h1>
           <h3>What it can do for me</h3>
+          <h4>(And how it does it)</h4>
           <p>
             <small>
               Oct. 9th 2016<br/>
@@ -56,6 +81,1413 @@
               ROSCon 2016, Seoul, Korea
             </small>
           </p>
+        </section>
+
+        <section>
+          <section>
+            <h2>build.ros.org</h2>
+            <br/>
+            <div class="row">
+              <div class="col-xs-4 col-xs-offset-4" style="height: 6em; margin-left: 35%">
+                <i class="glyphicon glyphicon-file" style="color: #44497a; font-size: 2em"></i><br/>
+                Create easy-to-<br/>install packages
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-4" style="height: 6em; margin-left: 10%">
+                <i class="glyphicon glyphicon-ok" style="color: #44497a; font-size: 2em"></i><br/>
+                Run tests before / <br/>after code changes
+              </div>
+              <div class="col-xs-4" style="height: 6em; margin-left: 20%">
+                <i class="glyphicon glyphicon-book" style="color: #44497a; font-size: 2em"></i><br/>
+                Generate API doc <br/>and meta information
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <h2>Central Service vs. Distributed</h2>
+            <ul>
+              <li style="list-style-type: none"><b>You could</b>
+                <ul>
+                  <li>create Debian packages yourself</li>
+                  <li>run the test using e.g. Travis CI</li>
+                  <li>generate API documentation yourself</li>
+                </ul>
+              </li>
+              <li style="list-style-type: none"><br/><b>But</b>
+                <ul>
+                  <li>setting up all these processes is quite some effort
+                    <ul>
+                      <li>having someone else do it is great for the users</li>
+                    </ul>
+                  </li>
+                  <li>the artifacts should be hosted in a central place</li>
+                  <li>if you download "official" binaries you know what you are getting</li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Central Service But Distributed Repositories</h2>
+            <ul style="width: 90%">
+              <li style="list-style-type: none"><b>A ROS distribution consists of numerous packages</b>
+                <ul style="font-size: 0.9em">
+                  <li>various vcs types</li>
+                  <li>various hosting services</li>
+                </ul>
+              </li>
+              <li style="list-style-type: none"><br/><a href="https://github.com/ros/rosdistro"><b>github.com/ros/rosdistro</b></a>
+                <ul style="font-size: 0.9em">
+                  <li>for each ROS distribution
+                    <ul>
+                      <li>target platforms<br/><span style="font-size: 0.8em">e.g. Kinetic: Ubuntu Xenial and Wily, <br/>Debian Jessie, (Fedora 23 and 24)</span></li>
+                      <li>packages and versions</li>
+                      <li>referencing all repositories</li>
+                    </ul>
+                  </li>
+                  <li>format of <code>yaml</code> files specified in <a href="http://www.ros.org/reps/rep-0143.html">REP 143</a></li>
+                </ul>
+              </li>
+              <li style="list-style-type: none"><br/>To use any of these services <br/>you need to register your repositories</li>
+            </ul>
+            <pre class="fragment" style="position: absolute; top: 20.5%; right: 0%; width: 52%; font-size: 0.7em"><code class="file yaml" data-trim data-noescape>
+<mark>rosdistro/index.yaml</mark>
+
+distributions:
+  kinetic:
+    distribution:
+    - kinetic/distribution.yaml
+    distribution_cache: &lt;url .yaml.gz&gt;
+            </code></pre>
+            <pre class="fragment" style="position: absolute; top: 52%; right: 0%; width: 38%; font-size: 0.65em"><code class="file yaml" data-trim data-noescape>
+<mark>./kinetic/distribution.yaml</mark>
+
+repositories:
+  catkin:
+    doc: &lt;...&gt;
+    release: &lt;...&gt;
+    source: &lt;...&gt;
+
+release_platforms:
+  ubuntu:
+  - wily
+  - xenial
+            </code></pre>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>The High-Level View</h2>
+            <ul>
+              <li>Get the source code:<br/>
+                <ul>
+                  <li style="list-style-type: none">e.g. <code>git clone</code></li>
+                </ul>
+              </li>
+              <li>Install the required dependencies:<br/>
+                <ul>
+                  <li style="list-style-type: none">using <code>rosdep</code></li>
+                </ul>
+              </li>
+              <li>Build a package:<br/>
+                <ul>
+                  <li style="list-style-type: none"><code>cmake</code>, <code>make</code>, <code>make install</code></li>
+                </ul>
+              </li>
+              <li>Run the tests:<br/>
+                <ul>
+                  <li style="list-style-type: none"><code>make test</code></li>
+                </ul>
+              </li>
+              <li>Create a Debian package:<br/>
+                <ul>
+                  <li style="list-style-type: none"><code>apt-src build</code></li>
+                </ul>
+              </li>
+              <li>Generate documentation<br/>
+                <ul>
+                  <li style="list-style-type: none"><code>rosdoc_lite</code></li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Some More Details</h2>
+            <ul style="width: 97%">
+              <li style="background-image: url(image/docker.png); background-position: top right; background-repeat: no-repeat; background-size: contain">Need to setup the environment for building
+                <ul>
+                  <li>Install all dependencies (using binary packages)</li>
+                  <li>Since each job has different dependencies <br/>each job needs to start with a "clean" state</li>
+                  <li>Inside a Docker container</li>
+                </ul>
+              </li>
+              <li>Build the code from one repository
+                <ul>
+                  <li>Might contain more than one ROS package</li>
+                  <li>The repository is cloned into a catkin workspace</li>
+                  <li>Invoke <code>catkin_make_isolated</code></li>
+                </ul>
+              </li>
+              <li>Install the code
+                <ul>
+                  <li>To check that the install step "works"</li>
+                </ul>
+              </li>
+              <li>Build and run the tests
+                <ul>
+                  <li>Each test produces a xUnit-like result file</li>
+                </ul>
+              </li>
+            </ul>
+
+            <p style="position: absolute; top: 42%; right: 0; width: 30%; color: #ffa500; padding: .5em" class="fragment" data-fragment-index="1">
+              <i class="glyphicon glyphicon-question-sign"></i><br/>One container for multiple packages
+            </p>
+
+            <p style="position: absolute; top: 70%; right: 0; width: 30%; color: #ffa500; padding: .5em" class="fragment" data-fragment-index="2">
+              <i class="glyphicon glyphicon-question-sign"></i><br/>Build vs. test dependencies
+            </p>
+
+            <aside class="notes">
+              <ul>
+                <li>Docker for isolation, not for sharing images.</li>
+                <li>One package having a dependency on "foo" might hide that another package lacks a dependency on "foo".</li>
+                <li>A separate Docker container per package would be perfect but significant overhead.</li>
+                <li>Separate build and test dependencies to keep builds without tests as efficient as possible.</li>
+                <li>The test dependencies are only installed when the tests are being build.</li>
+              </ul>
+            </aside>
+          </section>
+
+          <section>
+            <h3><code>catkin_make</code> vs. <code>catkin_make_isolated</code></h3>
+            <ul>
+              <li style="list-style-type: none">While the Docker container contains the dependencies for all packages</li>
+              <li style="list-style-type: none">Each package is still built "in isolation":</li>
+            </ul>
+
+            <table border="1" rules="all" frame="void">
+              <tr>
+                <th></th>
+                <th align="center">catkin_make</th>
+                <th align="center">catkin_make_isolated</th>
+              </tr>
+              <tr>
+                <th>CMake&nbsp;calls</th>
+                <td align="center">1, for the whole ws</td>
+                <td align="center">N, each pkg separately</td>
+              </tr>
+              <tr>
+                <th><small>Side effects</small></th>
+                <td align="center"><small><i class="glyphicon glyphicon-alert"></i> Need to depend on other pkgs targets <code>catkin_EXPORTED_TARGETS</code></small></td>
+                <td align="center"><small><i class="glyphicon glyphicon-minus"></i></small></td>
+              </tr>
+              <tr>
+                <th>Location of artifacts</th>
+                <td align="center">Merged in a single folder<br/>E.g. one include dir</td>
+                <td align="center">Each pkg has its own folder</td>
+              </tr>
+              <tr>
+                <th><small>Side effects</small></th>
+                <td align="center"><small><i class="glyphicon glyphicon-alert"></i> Package can implicitly access <br/>e.g. the headers from other pkgs</small></td>
+                <td align="center"><small><i class="glyphicon glyphicon-minus"></i></small></td>
+              </tr>
+              <tr>
+                <th>Pros</th>
+                <td align="center">Faster due to higher parallelization</td>
+                <td align="center">Clean separation, better to identify problems</td>
+              </tr>
+            </table>
+
+            <p style="position: absolute; top: 67%; right: 0; width: 36%; border: 3px solid #008000" class="fragment" data-fragment-index="1">
+              <br/><br/>
+            </p>
+
+            <p style="color: #ffa500; padding: .5em; text-align: left" class="fragment" data-fragment-index="2">
+              <i class="glyphicon glyphicon-question-sign"></i> The build farm builds with <code>-j 1</code> for easily readable output
+            </p>
+
+            <aside class="notes">
+              <ul>
+                <li>Otherwise in case of errors reading the console output becomes "challenging".</li>
+                <li>Therefore the build farm uses catkin_make_isolated.</li>
+              </ul>
+            </aside>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <div class="row" style="opacity: 0.25">
+              <div class="col-xs-4 col-xs-offset-4" style="height: 6em; margin-left: 35%">
+                <i class="glyphicon glyphicon-file" style="color: #44497a; font-size: 2em"></i><br/>
+                Create easy-to-<br/>install packages
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-4" style="height: 6em; margin-left: 10%">
+                <i class="glyphicon glyphicon-ok" style="color: #44497a; font-size: 2em"></i><br/>
+                Run tests before / <br/>after code changes
+              </div>
+              <div class="col-xs-4" style="height: 6em; margin-left: 20%; opacity: 0.25">
+                <i class="glyphicon glyphicon-book" style="color: #44497a; font-size: 2em"></i><br/>
+                Generate API doc <br/>and meta information
+              </div>
+            </div>
+          </section>
+
+          <section data-transition="fade-out">
+            <h2>Devel Jobs</h2>
+            <svg id="devel-job" width="700" height="550" xmlns:xlink= "http://www.w3.org/1999/xlink">
+              <marker id="devel-job_end-triangle" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="4" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z"/>
+              </marker>
+              <g title="repository">
+                <rect x="20" y="60" width="260" height="40"/>
+                <text x="150" y="90" text-anchor="middle">IN: repository</text>
+              </g>
+              <g title="clone" class="fragment" data-fragment-index="1">
+                <text x="365" y="30" text-anchor="middle">check 1h</text>
+                <polyline points="425,20 535,20 535,60" marker-end="url(#devel-job_end-triangle)"/>
+                <g transform="translate(400 50)">
+                  <line x1="-120" y1="30" x2="20" y2="30" marker-end="url(#devel-job_end-triangle)"/>
+                  <rect x="20" y="10" width="230" height="40"/>
+                  <text x="135" y="40" text-anchor="middle">clone</text>
+                </g>
+              </g>
+              <g title="process" transform="translate(400 50)" class="fragment" data-fragment-index="2">
+                <line x1="135" y1="50" x2="135" y2="90" marker-end="url(#devel-job_end-triangle)"/>
+                <g title="docker1" transform="translate(0 70)">
+                  <rect x="0" y="0" width="270" height="200" style="stroke: #888888;" stroke-dasharray="5,5"/>
+                  <text x="0" y="0" style="fill: #888888; stroke: #888888;" text-anchor="middle" transform="rotate(90) translate(100 -280)">Docker #1</text>
+                  <rect x="20" y="20" width="230" height="40"/>
+                  <text x="135" y="50" text-anchor="middle">install build dep</text>
+                  <line x1="135" y1="60" x2="135" y2="80" marker-end="url(#devel-job_end-triangle)"/>
+                  <rect x="20" y="80" width="230" height="40"/>
+                  <text x="135" y="110" text-anchor="middle">build</text>
+                  <line x1="135" y1="120" x2="135" y2="140" marker-end="url(#devel-job_end-triangle)"/>
+                  <rect x="20" y="140" width="230" height="40"/>
+                  <text x="135" y="170" text-anchor="middle">install</text>
+                </g>
+                <g title="docker2" transform="translate(0 290)">
+                  <rect x="0" y="0" width="270" height="200" style="stroke: #888888;" stroke-dasharray="5,5"/>
+                  <text x="0" y="0" style="fill: #888888; stroke: #888888;" text-anchor="middle" transform="rotate(90) translate(100 -280)">Docker #2</text>
+                  <line x1="135" y1="-40" x2="135" y2="20" marker-end="url(#devel-job_end-triangle)"/>
+                  <rect x="20" y="20" width="230" height="40"/>
+                  <text x="135" y="50" text-anchor="middle">install test dep</text>
+                  <line x1="135" y1="60" x2="135" y2="80" marker-end="url(#devel-job_end-triangle)"/>
+                  <rect x="20" y="80" width="230" height="40"/>
+                  <text x="135" y="110" text-anchor="middle">build tests</text>
+                  <line x1="135" y1="120" x2="135" y2="140" marker-end="url(#devel-job_end-triangle)"/>
+                  <rect x="20" y="140" width="230" height="40"/>
+                  <text x="135" y="170" text-anchor="middle">run tests</text>
+                </g>
+              </g>
+              <g title="result" transform="translate(0 480)" class="fragment" data-fragment-index="3">
+                <line x1="420" y1="20" x2="280" y2="20" marker-end="url(#devel-job_end-triangle)"/>
+                <rect x="20" y="0" width="260" height="40"/>
+                <text x="30" y="30">OUT: result</text>
+                <image xlink:href="image/red-ball.png" x="180" y="5" height="32px" width="32px"/>
+                <image xlink:href="image/yellow-ball.png" x="210" y="5" height="32px" width="32px"/>
+                <image xlink:href="image/green-ball.png" x="240" y="5" height="32px" width="32px"/>
+                <text x="30" y="65" style="font-size: 0.7em; fill: #ffa500; stroke: #ffa500;">CMake / compiler warnings, failing tests</text>
+              </g>
+              <g title="email" transform="translate(0 420)" class="fragment" data-fragment-index="4">
+                <rect x="20" y="0" width="155" height="40"/>
+                <text x="30" y="30">OUT: email</text>
+                <polyline points="195,60 195,20 175,20" marker-end="url(#devel-job_end-triangle)"/>
+                <polyline points="225,60 225,20 175,20" marker-end="url(#devel-job_end-triangle)"/>
+              </g>
+            </svg>
+            <p>
+              <i class="fragment glyphicon glyphicon-time" data-fragment-index="1" style="color: #44497a; position: absolute; top: 13.5%; left: 42%"></i><br/>
+            </p>
+            <pre style="position: absolute; top:26%; left: 5%; width: 45%;"><code class="file yaml" data-trim data-noescape>
+<mark>rosdistro/kinetic/distribution.yaml</mark>
+
+genmsg:
+  source:
+    type: git
+    url: https://github.com/ros/genmsg.git
+    version: &lt;valid branch name&gt;
+            </code></pre>
+            <pre class="fragment" data-fragment-index="4" style="position: absolute; top:48%; left: 5%; width: 45%;"><code class="file xml" data-trim data-noescape>
+<mark>pkg/package.xml</mark>
+
+&lt;maintainer
+  email="dthomas@osrfoundation.org"
+&gt;Dirk Thomas&lt;/maintainer&gt;
+            </code></pre>
+            <p class="fragment" data-fragment-index="4" style="font-size:0.8em; position: absolute; top:62%; left: 5%; width: 45%;">
+              + committers since the job was stable
+            </p>
+          </section>
+          <section data-transition="fade-in">
+            <h2>Pull Request Jobs</h2>
+            <svg id="pull-request-job" width="700" height="550" xmlns:xlink= "http://www.w3.org/1999/xlink">
+              <marker id="pull-request-job_end-triangle" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="4" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z"/>
+              </marker>
+              <marker id="pull-request-job_end-triangle-gray" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="4" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" style="fill: #888888;"/>
+              </marker>
+              <g title="repository">
+                <rect x="20" y="60" width="260" height="40"/>
+                <text x="150" y="90" text-anchor="middle">IN: repository</text>
+              </g>
+              <g title="clone">
+                <polyline points="150,60 150,20 240,20" marker-end="url(#pull-request-job_end-triangle)"/>
+                <text x="350" y="30" text-anchor="middle" style="fill: #c7254e; stroke: #c7254e;">GitHub webhook</text>
+                <polyline points="460,20 535,20 535,60" marker-end="url(#pull-request-job_end-triangle)"/>
+                <g transform="translate(400 50)" style="opacity: 0.5">
+                  <line x1="-120" y1="30" x2="20" y2="30" marker-end="url(#pull-request-job_end-triangle)"/>
+                  <rect x="20" y="10" width="230" height="40"/>
+                  <text x="135" y="40" text-anchor="middle">clone</text>
+                </g>
+              </g>
+              <g title="process" transform="translate(400 50)" style="opacity: 0.5">
+                <line x1="135" y1="50" x2="135" y2="90" marker-end="url(#pull-request-job_end-triangle)"/>
+                <g title="docker1" transform="translate(0 70)">
+                  <rect x="0" y="0" width="270" height="200" style="stroke: #888888;" stroke-dasharray="5,5"/>
+                  <text x="0" y="0" style="fill: #888888; stroke: #888888;" text-anchor="middle" transform="rotate(90) translate(100 -280)">Docker #1</text>
+                  <rect x="20" y="20" width="230" height="40"/>
+                  <text x="135" y="50" text-anchor="middle">install build dep</text>
+                  <line x1="135" y1="60" x2="135" y2="80" marker-end="url(#pull-request-job_end-triangle)"/>
+                  <rect x="20" y="80" width="230" height="40"/>
+                  <text x="135" y="110" text-anchor="middle">build</text>
+                  <line x1="135" y1="120" x2="135" y2="140" marker-end="url(#pull-request-job_end-triangle)"/>
+                  <rect x="20" y="140" width="230" height="40"/>
+                  <text x="135" y="170" text-anchor="middle">install</text>
+                </g>
+                <g title="docker2" transform="translate(0 290)">
+                  <rect x="0" y="0" width="270" height="200" style="stroke: #888888;" stroke-dasharray="5,5"/>
+                  <text x="0" y="0" style="fill: #888888; stroke: #888888;" text-anchor="middle" transform="rotate(90) translate(100 -280)">Docker #2</text>
+                  <line x1="135" y1="-40" x2="135" y2="20" marker-end="url(#pull-request-job_end-triangle)"/>
+                  <rect x="20" y="20" width="230" height="40"/>
+                  <text x="135" y="50" text-anchor="middle">install test dep</text>
+                  <line x1="135" y1="60" x2="135" y2="80" marker-end="url(#pull-request-job_end-triangle)"/>
+                  <rect x="20" y="80" width="230" height="40"/>
+                  <text x="135" y="110" text-anchor="middle">build tests</text>
+                  <line x1="135" y1="120" x2="135" y2="140" marker-end="url(#pull-request-job_end-triangle)"/>
+                  <rect x="20" y="140" width="230" height="40"/>
+                  <text x="135" y="170" text-anchor="middle">run tests</text>
+                </g>
+              </g>
+              <g title="result" transform="translate(0 480)" style="opacity: 0.5">
+                <line x1="420" y1="20" x2="280" y2="20" marker-end="url(#pull-request-job_end-triangle)"/>
+                <rect x="20" y="0" width="260" height="40"/>
+                <text x="30" y="30">OUT: result</text>
+                <image xlink:href="image/red-ball.png" x="180" y="5" height="32px" width="32px"/>
+                <image xlink:href="image/yellow-ball.png" x="210" y="5" height="32px" width="32px"/>
+                <image xlink:href="image/green-ball.png" x="240" y="5" height="32px" width="32px"/>
+              </g>
+              <g title="email" transform="translate(0 420)" style="opacity: 0.5">
+                <rect x="20" y="0" width="155" height="40"/>
+                <text x="30" y="30">OUT: email</text>
+                <polyline points="195,60 195,20 175,20" style="stroke: #888888;" marker-end="url(#pull-request-job_end-triangle-gray)"/>
+                <polyline points="225,60 225,20 175,20" style="stroke: #888888;" marker-end="url(#pull-request-job_end-triangle-gray)"/>
+              </g>
+              <g title="result" transform="translate(0 480)">
+                <rect x="20" y="-120" width="300" height="40"/>
+                <text x="30" y="-90" style="fill: #c7254e; stroke: #c7254e;">OUT: GitHub PR status</text>
+                <polyline points="195,0 195,-40 210,-40 210,-80" marker-end="url(#pull-request-job_end-triangle)"/>
+                <polyline points="225,0 225,-40 210,-40 210,-80" marker-end="url(#pull-request-job_end-triangle)"/>
+                <line x1="255" y1="0" x2="255" y2="-80" marker-end="url(#pull-request-job_end-triangle)"/>
+              </g>
+            </svg>
+            <p>
+              <pre style="position: absolute; top:28%; left: 5%; width: 45%;"><code id="pull-request_rosdistro-code" class="yaml" data-trim data-noescape>
+<mark>rosdistro/kinetic/distribution.yaml</mark>
+
+genmsg:
+  source:
+    test_pull_request: true
+    type: git
+    url: https://github.com/ros/genmsg.git
+    version: &lt;valid branch name&gt;
+              </code></pre>
+            </p>
+          </section>
+          <section>
+            <h2>Pull Request Jobs</h2>
+            <ul>
+              <li style="list-style-type: none"><b>Limitations</b>
+                <ul>
+                  <li><code>build.ros.org</code> only supports GitHub at the moment</li>
+                  <li>Jenkins GitHub user <code>ros-pull-request-builder</code> needs <br/>access to the org unit
+                    <ul>
+                      <li style="list-style-type: none"><a href="http://wiki.ros.org/buildfarm/Pull%20request%20testing">wiki.ros.org/buildfarm/Pull request testing</a></li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li style="list-style-type: none">&nbsp;</li>
+              <li style="list-style-type: none"><b>Alternatives</b>
+                <ul>
+                  <li>Run the same process using any other CI provider</li>
+                  <li>E.g. Travis CI, see example <code>.travis.yml</code> file:
+                    <ul>
+                      <li style="list-style-type: none"><a href="https://github.com/ros-infrastructure/ros_buildfarm/blob/master/doc/jobs/devel_jobs.rst#run-the-devel-job-on-travis">docs in github.com/ros-infrastructure/ros_buildfarm</a></li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <div class="row" style="opacity: 0.25">
+              <div class="col-xs-4 col-xs-offset-4" style="height: 6em; margin-left: 35%">
+                <i class="glyphicon glyphicon-file" style="color: #44497a; font-size: 2em"></i><br/>
+                Create easy-to-<br/>install packages
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-4" style="height: 6em; margin-left: 10%; opacity: 0.25">
+                <i class="glyphicon glyphicon-ok" style="color: #44497a; font-size: 2em"></i><br/>
+                Run tests before / <br/>after code changes
+              </div>
+              <div class="col-xs-4" style="height: 6em; margin-left: 20%">
+                <i class="glyphicon glyphicon-book" style="color: #44497a; font-size: 2em"></i><br/>
+                Generate API doc <br/>and meta information
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <h2>Doc Jobs</h2>
+            <svg id="doc-job" width="700" height="550" xmlns:xlink= "http://www.w3.org/1999/xlink">
+              <marker id="doc-job_end-triangle" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="4" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z"/>
+              </marker>
+              <g title="repository">
+                <rect x="20" y="60" width="260" height="40"/>
+                <text x="150" y="90" text-anchor="middle">IN: repository</text>
+              </g>
+              <g title="clone" class="fragment" data-fragment-index="1">
+                <text x="365" y="30" text-anchor="middle">check 3d</text>
+                <polyline points="425,20 535,20 535,60" marker-end="url(#doc-job_end-triangle)"/>
+                <g transform="translate(400 50)">
+                  <line x1="-120" y1="30" x2="20" y2="30" marker-end="url(#doc-job_end-triangle)"/>
+                  <rect x="20" y="10" width="230" height="40"/>
+                  <text x="135" y="40" text-anchor="middle">clone</text>
+                </g>
+              </g>
+              <g title="process" transform="translate(400 100)" class="fragment" data-fragment-index="2">
+                <line x1="135" y1="0" x2="135" y2="20" marker-end="url(#doc-job_end-triangle)"/>
+                <rect x="20" y="20" width="230" height="70"/>
+                <text x="135" y="50" text-anchor="middle">changelog</text>
+                <text x="135" y="80" style="font-size: 0.8em" text-anchor="middle">rst &rarr; html</text>
+                <line x1="135" y1="90" x2="135" y2="110" marker-end="url(#doc-job_end-triangle)"/>
+                <rect x="20" y="110" width="230" height="40"/>
+                <text x="135" y="140" style="font-size: 0.9em" text-anchor="middle">meta information</text>
+                <line x1="135" y1="150" x2="135" y2="170" marker-end="url(#doc-job_end-triangle)"/>
+                <rect x="20" y="170" width="230" height="40"/>
+                <text x="135" y="200" style="font-size: 0.9em" text-anchor="middle">cross ref index</text>
+              </g>
+              <g title="process" transform="translate(400 310)" class="fragment" data-fragment-index="3">
+                <line x1="135" y1="0" x2="135" y2="50" marker-end="url(#doc-job_end-triangle)"/>
+                <g title="docker" transform="translate(0 30)">
+                  <rect x="0" y="0" width="270" height="200" style="stroke: #888888;" stroke-dasharray="5,5"/>
+                  <text x="0" y="0" style="fill: #888888; stroke: #888888;" text-anchor="middle" transform="rotate(90) translate(100 -280)">Docker</text>
+                  <rect x="20" y="20" width="230" height="40"/>
+                  <text x="135" y="50" text-anchor="middle">install doc dep</text>
+                  <line x1="135" y1="60" x2="135" y2="80" marker-end="url(#doc-job_end-triangle)"/>
+                  <rect x="20" y="80" width="230" height="40"/>
+                  <text x="135" y="110" style="font-size: 0.9em" text-anchor="middle">generate msg / srv</text>
+                  <line x1="135" y1="120" x2="135" y2="140" marker-end="url(#doc-job_end-triangle)"/>
+                  <rect x="20" y="140" width="230" height="40"/>
+                  <text x="135" y="170" style="font-size: 0.9em" text-anchor="middle">rosdoc_lite &forall; pkgs</text>
+                </g>
+              </g>
+              <g title="result" transform="translate(0 480)" class="fragment" data-fragment-index="4">
+                <line x1="420" y1="20" x2="280" y2="20" marker-end="url(#doc-job_end-triangle)"/>
+                <rect x="20" y="0" width="260" height="40"/>
+                <text x="30" y="30">OUT: result</text>
+                <image xlink:href="image/red-ball.png" x="180" y="5" height="32px" width="32px"/>
+                <image xlink:href="image/yellow-ball.png" x="210" y="5" height="32px" width="32px"/>
+                <image xlink:href="image/green-ball.png" x="240" y="5" height="32px" width="32px"/>
+                <text x="30" y="65" style="font-size: 0.7em; fill: #ffa500; stroke: #ffa500;">rosdoc_lite warnings</text>
+              </g>
+              <g title="email" transform="translate(0 420)" class="fragment" data-fragment-index="4">
+                <rect x="20" y="0" width="155" height="40"/>
+                <text x="30" y="30">OUT: email</text>
+                <polyline points="195,60 195,20 175,20" marker-end="url(#doc-job_end-triangle)"/>
+                <polyline points="225,60 225,20 175,20" marker-end="url(#doc-job_end-triangle)"/>
+              </g>
+              <g title="upload" transform="translate(0 330)" class="fragment" data-fragment-index="5">
+                <rect x="20" y="0" width="270" height="70"/>
+                <text x="30" y="30" style="font-size: 0.7em">OUT: generated docs</text>
+                <text x="80" y="60" style="font-size: 0.7em">upload to webserver</text>
+                <polyline points="225,150 225,90 330,90 330,35 290,35" marker-end="url(#doc-job_end-triangle)"/>
+                <polyline points="255,150 255,90 330,90 330,35 290,35" marker-end="url(#doc-job_end-triangle)"/>
+              </g>
+              <g title="index" transform="translate(0 270)" class="fragment" data-fragment-index="5">
+                <rect x="20" y="0" width="270" height="40"/>
+                <text x="30" y="30" style="font-size: 0.7em">OUT: update cross ref index</text>
+                <polyline points="255,210 255,150 330,150 330,20 290,20" marker-end="url(#doc-job_end-triangle)"/>
+                <polyline points="225,210 225,150 330,150 330,20 290,20" marker-end="url(#doc-job_end-triangle)"/>
+              </g>
+            </svg>
+            <p>
+              <i class="fragment glyphicon glyphicon-time" data-fragment-index="1" style="color: #44497a; position: absolute; top: 13.5%; left: 42%"></i><br/>
+            </p>
+            <pre style="position: absolute; top:26%; left: 5%; width: 45%;"><code class="yaml" data-trim data-noescape>
+<mark>rosdistro/kinetic/distribution.yaml</mark>
+
+genmsg:
+  doc:
+    type: git
+    url: https://github.com/ros/genmsg.git
+    version: &lt;valid branch or tag name&gt;
+            </code></pre>
+            <pre style="font-size: 0.5em; position: absolute; top: 17%; left: 0; width: 55%" class="fragment current-visible" data-fragment-index="2"><code class="yaml" data-trim data-noescape>
+<mark>kinetic/api/genmsg/manifest.yaml</mark>
+
+api_documentation: \
+  http://docs.ros.org/kinetic/api/genmsg/html
+
+description: Generate ROS message and service data.
+license: BSD
+maintainer_status: maintained
+maintainers: Dirk Thomas &lt;email&gt;
+authors: &lt;names&gt;
+
+has_changelog_rst: true
+depends: &lt;list of package dependencies&gt;
+depends_on: &lt;list of packages depending on this&gt;
+timestamp: &lt;last generation&gt;
+
+url: http://wiki.ros.org/genmsg
+repo_url: https://github.com/ros/genmsg.git
+bugtracker: https://github.com/ros/genmsg/issues
+
+devel_jobs: &lt;list of urls&gt;
+doc_job: &lt;url&gt;
+release_jobs: &lt;list of urls&gt;
+
+actions: &lt;list of action names&gt;
+msgs: &lt;list of msg names&gt;
+srvs: &lt;list of service names&gt;
+            </code></pre>
+
+            <aside class="notes">
+              <ul>
+                <li>Mention index for referencing documentation across packages.</li>
+                <li>Why not build the packages? It should be possible to document repositories when their dependencies haven't been released.</li>
+              </ul>
+            </aside>
+          </section>
+          <section>
+            <h2>Wiki Integration</h2>
+            <img src="image/wiki-roscpp.png"/>
+            <pre class="fragment" style="position: absolute; bottom: 8%; left: 36%; width: 34%; padding: 1em"><code class="yaml" data-trim data-noescape>
+<mark>wiki markup</mark>
+
+&lt;&lt;PackageHeader(roscpp)&gt;&gt;
+            </code></pre>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <div class="row">
+              <div class="col-xs-4 col-xs-offset-4" style="height: 6em; margin-left: 35%">
+                <i class="glyphicon glyphicon-file" style="color: #44497a; font-size: 2em"></i><br/>
+                Create easy-to-<br/>install packages
+              </div>
+            </div>
+            <div class="row" style="opacity: 0.25">
+              <div class="col-xs-4" style="height: 6em; margin-left: 10%">
+                <i class="glyphicon glyphicon-ok" style="color: #44497a; font-size: 2em"></i><br/>
+                Run tests before / <br/>after code changes
+              </div>
+              <div class="col-xs-4" style="height: 6em; margin-left: 20%">
+                <i class="glyphicon glyphicon-book" style="color: #44497a; font-size: 2em"></i><br/>
+                Generate API doc <br/>and meta information
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <h2>Release Process</h2>
+            <svg id="release-process" width="700" height="550" xmlns:xlink= "http://www.w3.org/1999/xlink">
+              <marker id="release-process_end-triangle" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="4" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z"/>
+              </marker>
+              <g title="repository">
+                <rect x="10" y="60" width="260" height="40"/>
+                <text x="140" y="90" text-anchor="middle">source repository</text>
+              </g>
+              <g title="tag-version" class="fragment" data-fragment-index="1">
+                <line x1="365" y1="80" x2="270" y2="80" marker-end="url(#release-process_end-triangle)"/>
+                <text x="375" y="90" style="fill: #c7254e; stroke: #c7254e;">catkin_prepare_release</text>
+                <text x="410" y="120" style="font-size: 0.7em">tag version</text>
+              </g>
+              <g title="bloom" class="fragment" data-fragment-index="2" transform="translate(0 170)">
+                <rect x="10" y="0" width="260" height="40"/>
+                <text x="140" y="30" text-anchor="middle">release repository</text>
+                <line x1="270" y1="-80" x2="365" y2="10" marker-end="url(#release-process_end-triangle)"/>
+                <line x1="365" y1="20" x2="270" y2="20" marker-end="url(#release-process_end-triangle)"/>
+                <text x="375" y="30" style="fill: #c7254e; stroke: #c7254e;">bloom</text>
+                <text x="410" y="60" style="font-size: 0.7em">each package, with Debian files</text>
+              </g>
+              <g title="source-jobs" class="fragment" data-fragment-index="4" transform="translate(0 280)">
+                <rect x="15" y="5" width="320" height="40"/>
+                <rect x="10" y="0" width="320" height="40" style="fill: #ffffff"/>
+                <text x="170" y="30" text-anchor="middle">Debian source packages</text>
+                <line x1="270" y1="-80" x2="365" y2="10" marker-end="url(#release-process_end-triangle)"/>
+                <line x1="365" y1="20" x2="335" y2="20" marker-end="url(#release-process_end-triangle)"/>
+                <text x="375" y="30" style="fill: #c7254e; stroke: #c7254e;">source jobs</text>
+                <text x="410" y="60" style="font-size: 0.7em">each os name and os code name</text>
+                <text x="410" y="80" style="font-size: 0.7em">e.g Ubuntu Xenial</text>
+              </g>
+              <g title="binary-jobs" class="fragment" data-fragment-index="5" transform="translate(0 390)">
+                <rect x="20" y="10" width="320" height="40"/>
+                <rect x="15" y="5" width="320" height="40" style="fill: #ffffff"/>
+                <rect x="10" y="0" width="320" height="40" style="fill: #ffffff"/>
+                <line x1="335" y1="-80" x2="365" y2="10" marker-end="url(#release-process_end-triangle)"/>
+                <line x1="365" y1="20" x2="340" y2="20" marker-end="url(#release-process_end-triangle)"/>
+                <text x="170" y="30" text-anchor="middle">Debian binary packages</text>
+                <text x="375" y="30" style="fill: #c7254e; stroke: #c7254e;">binary jobs</text>
+                <text x="410" y="60" style="font-size: 0.7em">each os (code) name and arch</text>
+                <text x="410" y="80" style="font-size: 0.7em">e.g Ubuntu Xenial amd64</text>
+              </g>
+            </svg>
+            <p>
+              <i class="fragment glyphicon glyphicon-tag" data-fragment-index="1" style="font-size: 0.7em; color: #44497a; position: absolute; top: 23%; left: 52.8%"></i><br/>
+              <i class="fragment glyphicon glyphicon-tags" data-fragment-index="2" style="font-size: 0.7em; color: #44497a; position: absolute; top: 36%; left: 52.8%"></i><br/>
+              <i class="fragment glyphicon glyphicon-file" data-fragment-index="4" style="font-size: 0.7em; color: #44497a; position: absolute; top: 48.5%; left: 52.8%"></i><br/>
+              <i class="fragment glyphicon glyphicon-file" data-fragment-index="5" style="font-size: 0.7em; color: #44497a; position: absolute; top: 61%; left: 52.8%"></i><br/>
+            </p>
+            <pre style="position: absolute; top:13%; right: 13%; width: 35%; font-size: 0.8em" class="fragment current-visible" data-fragment-index="3"><code class="yaml" data-trim data-noescape>
+<mark>gbp-repo/tracks.yaml</mark>
+
+kinetic:
+  devel_branch: master
+            </code></pre>
+            <pre style="position: absolute; top:37%; right: 0%; width: 80%; font-size: 0.8em" class="fragment current-visible" data-fragment-index="3"><code class="yaml" data-trim data-noescape>
+<mark>rosdistro/kinetic/distribution.yaml</mark>
+
+foo:
+  release:
+    packages:
+    - bar
+    - baz
+    tags:
+      release: release/kinetic/{package}/{version}
+    url: https://github.com/ros-gbp/foo-release.git
+    version: 1.2.3-4
+            </code></pre>
+          </section>
+          <section>
+            <h2>Bloom</h2>
+            <svg id="bloom" width="700" height="550" xmlns:xlink= "http://www.w3.org/1999/xlink">
+              <marker id="bloom_end-triangle" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="4" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z"/>
+              </marker>
+              <g title="source-repository" transform="translate(0 40)">
+                <rect x="10" y="0" width="260" height="140"/>
+                <text x="30" y="30">source repository</text>
+                <text x="30" y="60" style="font-size: 0.7em">on a single branch:</text>
+                <text x="30" y="90" style="font-size: 0.7em">- pkgA</text>
+                <text x="30" y="120" style="font-size: 0.7em">- pkgB</text>
+              </g>
+              <g title="release-repository" transform="translate(0 280)" class="fragment" data-fragment-index="1">
+                <rect x="10" y="60" width="260" height="150"/>
+                <text x="30" y="90">release repository</text>
+                <text x="30" y="120" style="font-size: 0.65em">snapshot on sep. branches:</text>
+                <g transform="translate(30 0)">
+                  <g class="fragment" data-fragment-index="7">
+                    <rect x="0" y="140" width="80" height="40"/>
+                    <rect x="5" y="145" width="80" height="40" style="fill: #ffffff"/>
+                  </g>
+                  <rect x="10" y="150" width="80" height="40" style="fill: #ffffff"/>
+                  <text x="50" y="180" text-anchor="middle">pkgA</text>
+                </g>
+                <g transform="translate(140 0)">
+                  <g class="fragment" data-fragment-index="7">
+                    <rect x="0" y="140" width="80" height="40"/>
+                    <rect x="5" y="145" width="80" height="40" style="fill: #ffffff"/>
+                  </g>
+                  <rect x="10" y="150" width="80" height="40" style="fill: #ffffff"/>
+                  <text x="50" y="180" text-anchor="middle">pkgB</text>
+                </g>
+                <g class="fragment current-visible" data-fragment-index="1">
+                  <line x1="135" y1="-100" x2="135" y2="60" marker-end="url(#bloom_end-triangle)"/>
+                </g>
+              </g>
+              <g title="source-package" transform="translate(310 40)" class="fragment" data-fragment-index="2">
+                <line x1="-220" y1="115" x2="10" y2="115" marker-end="url(#bloom_end-triangle)"/>
+                <rect x="10" y="0" width="180" height="190"/>
+                <text x="30" y="30">pkgB</text>
+                <text x="30" y="60" style="font-size: 0.7em">package.xml:</text>
+                <text x="30" y="90" style="font-size: 0.7em">- build type</text>
+                <text x="30" y="120" style="font-size: 0.7em">- build deps</text>
+                <text x="30" y="150" style="font-size: 0.7em">- run deps</text>
+                <text x="30" y="180" style="font-size: 0.7em">CHANGELOG.rst</text>
+              </g>
+              <g title="release-package" transform="translate(300 260)" class="fragment" data-fragment-index="3">
+                <g class="fragment" data-fragment-index="7">
+                  <rect x="10" y="60" width="180" height="160"/>
+                  <rect x="15" y="65" width="180" height="160" style="fill: #ffffff"/>
+                </g>
+                <rect x="20" y="70" width="180" height="160" style="fill: #ffffff"/>
+                <text x="40" y="100">pkgB</text>
+                <text x="40" y="130" style="font-size: 0.7em">e.g. Debian</text>
+                <text x="40" y="160" style="font-size: 0.7em">- changelog</text>
+                <text x="40" y="190" style="font-size: 0.7em">- control</text>
+                <text x="40" y="220" style="font-size: 0.7em">- rules</text>
+                <line x1="20" y1="190" x2="-70" y2="190" marker-end="url(#bloom_end-triangle)"/>
+              </g>
+              <g title="mapping" transform="translate(310 40)" class="fragment" data-fragment-index="4">
+                <polyline points="135,85 360,85 360,435 90,435" marker-end="url(#bloom_end-triangle)"/>
+                <text x="260" y="55" style="font-size: 0.8em; fill: #44497a; stroke: #44497a;">How to</text>
+                <text x="260" y="75" style="font-size: 0.8em; fill: #44497a; stroke: #44497a;">build pkg</text>
+              </g>
+              <g title="mapping" transform="translate(310 40)" class="fragment" data-fragment-index="5">
+                <polyline points="135,115 285,115 285,405 110,405" marker-end="url(#bloom_end-triangle)"/>
+                <polyline points="125,145 285,145 285,405 110,405" marker-end="url(#bloom_end-triangle)"/>
+                <text x="213" y="355" style="font-size: 0.8em; fill: #44497a; stroke: #44497a;">rosdep&nbsp;keys</text>
+                <text x="240" y="375" style="font-size: 0.8em; fill: #44497a; stroke: #44497a;">&darr;</text>
+                <text x="211" y="395" style="font-size: 0.8em; fill: #44497a; stroke: #44497a;">system&nbsp;pkgs</text>
+              </g>
+              <g title="mapping" transform="translate(310 40)" class="fragment" data-fragment-index="6">
+                <polyline points="175,175 210,175 210,375 140,375" marker-end="url(#bloom_end-triangle)"/>
+                <text x="155" y="235" style="font-size: 0.8em; fill: #44497a; stroke: #44497a;">rst &rarr;</text>
+                <text x="125" y="255" style="font-size: 0.8em; fill: #44497a; stroke: #44497a;">custom</text>
+              </g>
+              <g title="targets" transform="translate(10 520)" class="fragment" data-fragment-index="7">
+                <text x="0" y="0" style="font-size: 0.8em">Each target platform needs custom specialization, e.g. Wily vs. Xenial</text>
+              </g>
+            </svg>
+            <p class="fragment" data-fragment-index="4">
+              <i class="glyphicon glyphicon-pushpin" style="font-size: 0.7em; color: #44497a; position: absolute; top: 21%; left: 70%"></i><br/>
+            </p>
+            <p class="fragment" data-fragment-index="5">
+              <i class="glyphicon glyphicon-random" style="font-size: 0.7em; color: #44497a; position: absolute; top: 51.5%; left: 70.5%"></i><br/>
+            </p>
+            <p class="fragment" data-fragment-index="6">
+              <i class="glyphicon glyphicon-wrench" style="font-size: 0.7em; color: #44497a; position: absolute; top: 42%; left: 56.5%"></i><br/>
+            </p>
+            <pre style="position: absolute; top:34.5%; left: 0%; width: 55%;" class="fragment" data-fragment-index="8"><code class="yaml" data-trim data-noescape>
+<mark>AUTOMATION</mark>
+
+- Makes releasing as easy as possible
+- But allows customization anywhere in the process
+- Creates the rosdistro pull request for you
+            </code></pre>
+          </section>
+          <section>
+            <h2>Sourcedeb Jobs</h2>
+            <svg id="sourcedeb-job" width="700" height="550" xmlns:xlink= "http://www.w3.org/1999/xlink">
+              <marker id="sourcedeb-job_end-triangle" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="4" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z"/>
+              </marker>
+              <g title="repository">
+                <rect x="20" y="60" width="260" height="40"/>
+                <text x="150" y="90" text-anchor="middle">IN: release repo</text>
+              </g>
+              <g title="clone" class="fragment" data-fragment-index="1">
+                <text x="365" y="30" text-anchor="middle">check 15min</text>
+                <polyline points="450,20 535,20 535,60" marker-end="url(#sourcedeb-job_end-triangle)"/>
+                <g transform="translate(400 50)">
+                  <line x1="-120" y1="30" x2="20" y2="30" marker-end="url(#sourcedeb-job_end-triangle)"/>
+                  <rect x="20" y="10" width="230" height="130"/>
+                  <text x="135" y="40" text-anchor="middle">clone</text>
+                  <text x="135" y="70" style="font-size: 0.7em" text-anchor="middle">specific branch</text>
+                  <text x="135" y="100" style="font-size: 0.7em" text-anchor="middle">pkg, os (code) name</text>
+                  <text x="135" y="130" style="font-size: 0.4em" text-anchor="middle">e.g. debian/ros-kinetic-bar-1.2.3-4_xenial</text>
+                </g>
+              </g>
+              <g title="process" transform="translate(400 50)" class="fragment" data-fragment-index="2">
+                <line x1="135" y1="140" x2="135" y2="180" marker-end="url(#sourcedeb-job_end-triangle)"/>
+                <g title="docker" transform="translate(0 160)">
+                  <rect x="0" y="0" width="270" height="200" style="stroke: #888888;" stroke-dasharray="5,5"/>
+                  <text x="0" y="0" style="fill: #888888; stroke: #888888;" text-anchor="middle" transform="rotate(90) translate(100 -280)">Docker</text>
+                  <rect x="20" y="20" width="230" height="100"/>
+                  <text x="135" y="50" text-anchor="middle">install tools</text>
+                  <text x="135" y="80" style="font-size: 0.7em" text-anchor="middle">debhelper</text>
+                  <text x="135" y="110" style="font-size: 0.7em" text-anchor="middle">git-buildpackage</text>
+                  <line x1="135" y1="120" x2="135" y2="140" marker-end="url(#sourcedeb-job_end-triangle)"/>
+                  <rect x="20" y="140" width="230" height="40"/>
+                  <text x="135" y="170" text-anchor="middle">gbp buildpackage</text>
+                </g>
+              </g>
+              <g title="result" transform="translate(0 480)" class="fragment" data-fragment-index="3">
+                <polyline points="535,-90 535,20 280,20" marker-end="url(#sourcedeb-job_end-triangle)"/>
+                <rect x="20" y="0" width="260" height="40"/>
+                <text x="30" y="30">OUT: result</text>
+                <image xlink:href="image/red-ball.png" x="180" y="5" height="32px" width="32px"/>
+                <image xlink:href="image/green-ball.png" x="240" y="5" height="32px" width="32px"/>
+              </g>
+              <g title="email" transform="translate(0 420)" class="fragment" data-fragment-index="3">
+                <rect x="20" y="0" width="155" height="40"/>
+                <text x="30" y="30">OUT: email</text>
+                <polyline points="195,60 195,20 175,20" marker-end="url(#sourcedeb-job_end-triangle)"/>
+              </g>
+              <g title="sourcedeb" transform="translate(0 330)" class="fragment" data-fragment-index="4">
+                <rect x="20" y="0" width="270" height="70"/>
+                <text x="30" y="30" style="font-size: 0.7em">OUT: Debian source package</text>
+                <text x="80" y="60" style="font-size: 0.7em">upload to apt repo</text>
+                <polyline points="255,150 255,110 330,110 330,35 290,35" marker-end="url(#sourcedeb-job_end-triangle)"/>
+              </g>
+              <g title="trigger" transform="translate(0 240)" class="fragment" data-fragment-index="4">
+                <rect x="20" y="0" width="230" height="70"/>
+                <text x="30" y="30" style="font-size: 0.7em">OUT: trigger binary jobs</text>
+                <text x="80" y="60" style="font-size: 0.7em">&forall; architectures</text>
+                <polyline points="255,240 255,200 330,200 330,35 250,35" marker-end="url(#sourcedeb-job_end-triangle)"/>
+              </g>
+            </svg>
+            <p>
+              <i class="fragment glyphicon glyphicon-time" data-fragment-index="1" style="color: #44497a; position: absolute; top: 13.5%; left: 39.5%"></i><br/>
+            </p>
+          </section>
+          <section>
+            <h2>Binarydeb Jobs</h2>
+            <svg id="binarydeb-job" width="700" height="550" xmlns:xlink= "http://www.w3.org/1999/xlink">
+              <marker id="binarydeb-job_end-triangle" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="4" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z"/>
+              </marker>
+              <g title="repository">
+                <rect x="20" y="60" width="260" height="40"/>
+                <text x="150" y="90" style="font-size: 0.7em" text-anchor="middle">IN: Debian source package</text>
+              </g>
+              <g title="fetch" class="fragment" data-fragment-index="1">
+                <text x="350" y="30" text-anchor="middle">triggered by sourcedeb job</text>
+                <polyline points="520,20 535,20 535,60" marker-end="url(#binarydeb-job_end-triangle)"/>
+                <g transform="translate(400 50)">
+                  <line x1="-120" y1="30" x2="20" y2="30" marker-end="url(#binarydeb-job_end-triangle)"/>
+                  <rect x="20" y="10" width="230" height="70"/>
+                  <text x="135" y="40" text-anchor="middle">fetch</text>
+                  <text x="135" y="70" style="font-size: 0.7em" text-anchor="middle">from apt repo</text>
+                </g>
+              </g>
+              <g title="abort" transform="translate(400 130)" class="fragment" data-fragment-index="2">
+                <polyline points="135,0 135,40 175,40" marker-end="url(#binarydeb-job_end-triangle)"/>
+                <text x="180" y="47" style="fill: #ffa500; stroke: #ffa500; font-size: 0.9em">abort ?</text>
+              </g>
+              <g title="fetch" transform="translate(400 210)" class="fragment" data-fragment-index="3">
+                <line x1="135" y1="-80" x2="135" y2="0" marker-end="url(#binarydeb-job_end-triangle)"/>
+                <rect x="20" y="0" width="230" height="40"/>
+                <text x="135" y="30" style="font-size: 0.9em" text-anchor="middle">append timestamp</text>
+              </g>
+              <g title="process" transform="translate(400 270)" class="fragment" data-fragment-index="4">
+                <line x1="135" y1="-20" x2="135" y2="20" marker-end="url(#binarydeb-job_end-triangle)"/>
+                <g title="docker">
+                  <rect x="0" y="0" width="270" height="140" style="stroke: #888888;" stroke-dasharray="5,5"/>
+                  <text x="0" y="0" style="fill: #888888; stroke: #888888;" text-anchor="middle" transform="rotate(90) translate(70 -280)">Docker</text>
+                  <rect x="20" y="20" width="230" height="40"/>
+                  <text x="135" y="50" text-anchor="middle">install build dep</text>
+                  <line x1="135" y1="60" x2="135" y2="80" marker-end="url(#binarydeb-job_end-triangle)"/>
+                  <rect x="20" y="80" width="230" height="40"/>
+                  <text x="135" y="110" style="font-size: 0.9em" text-anchor="middle">dpkg-buildpackage</text>
+                </g>
+              </g>
+              <g title="result" transform="translate(0 480)" class="fragment" data-fragment-index="5">
+                <polyline points="535,-90 535,20 280,20" marker-end="url(#binarydeb-job_end-triangle)"/>
+                <rect x="20" y="0" width="260" height="40"/>
+                <text x="30" y="30">OUT: result</text>
+                <image xlink:href="image/red-ball.png" x="180" y="5" height="32px" width="32px"/>
+                <image xlink:href="image/green-ball.png" x="240" y="5" height="32px" width="32px"/>
+              </g>
+              <g title="email" transform="translate(0 420)" class="fragment" data-fragment-index="5">
+                <rect x="20" y="0" width="155" height="40"/>
+                <text x="30" y="30">OUT: email</text>
+                <polyline points="195,60 195,20 175,20" marker-end="url(#binarydeb-job_end-triangle)"/>
+              </g>
+              <g title="binarydeb" transform="translate(0 330)" class="fragment" data-fragment-index="6">
+                <rect x="20" y="0" width="270" height="70"/>
+                <text x="30" y="30" style="font-size: 0.7em">OUT: Debian binary package</text>
+                <text x="80" y="60" style="font-size: 0.7em">upload to apt repo</text>
+                <polyline points="255,150 255,110 330,110 330,35 290,35" marker-end="url(#binarydeb-job_end-triangle)"/>
+              </g>
+              <g title="trigger" transform="translate(0 240)" class="fragment" data-fragment-index="6">
+                <rect x="20" y="0" width="230" height="70"/>
+                <text x="30" y="30" style="font-size: 0.7em">OUT: trigger binary jobs</text>
+                <text x="80" y="60" style="font-size: 0.65em">&forall; downstream pkgs</text>
+                <polyline points="255,240 255,200 330,200 330,35 250,35" marker-end="url(#binarydeb-job_end-triangle)"/>
+              </g>
+            </svg>
+          </section>
+          <section>
+            <h2>Apt Repositories</h2>
+            <svg id="apt-repositories" width="700" height="550" xmlns:xlink= "http://www.w3.org/1999/xlink">
+              <marker id="apt-repos_end-triangle" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="4" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z"/>
+              </marker>
+              <g title="main" transform="translate(50 40)">
+                <rect x="0" y="0" width="280" height="80"/>
+                <text x="140" y="30" text-anchor="middle">"main"</text>
+                <text x="140" y="60" text-anchor="middle" style="font-size: 0.7em">packages.ros.org/ros/ubuntu</text>
+                <line x1="-50" y1="40" x2="0" y2="40" marker-end="url(#apt-repos_end-triangle)"/>
+              </g>
+              <g title="mirrors" transform="translate(30 20)" class="fragment" data-fragment-index="1">
+                <rect x="0" y="0" width="320" height="270" style="stroke: #888888;" stroke-dasharray="5,5"/>
+                <text x="160" y="300" style="fill: #888888; stroke: #888888;" text-anchor="middle">Distributed mirrors</text>
+              </g>
+              <g title="testing" transform="translate(50 190)" class="fragment" data-fragment-index="2">
+                <rect x="0" y="0" width="280" height="80"/>
+                <text x="140" y="30" text-anchor="middle">"testing"</text>
+                <text x="140" y="60" text-anchor="middle" style="font-size: 0.5em">packages.ros.org/ros-shadow-fixed/ubuntu</text>
+                <line x1="-50" y1="40" x2="0" y2="40" marker-end="url(#apt-repos_end-triangle)"/>
+                <g class="fragment current-visible" data-fragment-index="2">
+                  <path d="M280 40 C 350 40, 350 -110, 280 -110" marker-end="url(#apt-repos_end-triangle)"/>
+                  <text x="0" y="0" style="font-size: 0.8em; fill: #44497a; stroke: #44497a;" text-anchor="middle" transform="rotate(90) translate(-35 -340)">manual sync</text>
+                </g>
+              </g>
+              <g title="testing" transform="translate(430 40)" class="fragment" data-fragment-index="3">
+                <line x1="-40" y1="-20" x2="-40" y2="520" style="stroke: #888888;" stroke-dasharray="5,5"/>
+                <rect x="0" y="0" width="180" height="80"/>
+                <text x="90" y="30" text-anchor="middle">"main"</text>
+                <line x1="0" y1="40" x2="-100" y2="40" marker-end="url(#apt-repos_end-triangle)"/>
+                <rect x="0" y="150" width="180" height="80"/>
+                <text x="90" y="180" text-anchor="middle">"testing"</text>
+                <line x1="0" y1="190" x2="-100" y2="190" marker-end="url(#apt-repos_end-triangle)"/>
+                <g transform="translate(0 150)">
+                  <path d="M180 30 C 250 30, 250 -110, 180 -110" marker-end="url(#apt-repos_end-triangle)"/>
+                  <text x="0" y="0" style="font-size: 0.8em; fill: #44497a; stroke: #44497a;" text-anchor="middle" transform="rotate(90) translate(-35 -240)">manual sync</text>
+                </g>
+                <rect x="0" y="300" width="180" height="80"/>
+                <text x="90" y="330" text-anchor="middle">"building"</text>
+                <text x="90" y="360" text-anchor="middle" style="font-size: 0.55em">newly built pkgs go here</text>
+                <g transform="translate(0 300)">
+                  <path d="M180 40 C 250 40, 250 -100, 180 -100" marker-end="url(#apt-repos_end-triangle)"/>
+                  <text x="0" y="0" style="font-size: 0.8em; fill: #44497a; stroke: #44497a;" text-anchor="middle" transform="rotate(90) translate(-35 -240)">auto sync</text>
+                </g>
+                <text x="120" y="410" style="font-size: 0.8em; fill: #888888; stroke: #888888;" text-anchor="middle">Server colocated with Jenkins</text>
+                <text x="-250" y="460" style="font-size: 0.8em; fill: #008000; stroke: #008000;" text-anchor="middle">Please only use</text>
+                <text x="-250" y="490" style="font-size: 0.8em; fill: #008000; stroke: #008000;" text-anchor="middle">these ones directly</text>
+              </g>
+            </svg>
+            <p>
+              <i class="glyphicon glyphicon-user" text-anchor="middle" style="color: #44497a; position: absolute; top: 20.5%; left: 10%"></i><br/>
+              <i class="fragment glyphicon glyphicon-sunglasses" data-fragment-index="2" text-anchor="middle" style="color: #44497a; position: absolute; top: 39.5%; left: 10%"></i><br/>
+            </p>
+          </section>
+          <section>
+            <h2>Status Pages</h2>
+            <img src="image/status-page.png"/>
+            <svg id="status-page" style="position: absolute; top: 10%; left: 0%; width: 100%;" width="700" height="550" xmlns:xlink= "http://www.w3.org/1999/xlink">
+              <marker id="status-page_end-triangle" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="4" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z"/>
+              </marker>
+              <g title="repo-columns" class="fragment" transform="translate(700 190)">
+                <text x="0" y="0" style="font-size: 0.7em" transform="rotate(-45) translate(0 0)">building</text>
+                <text x="36" y="0" style="font-size: 0.7em" transform="rotate(-45) translate(-20 20)">testing</text>
+                <text x="72" y="0" style="font-size: 0.7em" transform="rotate(-45) translate(-40 40)">main</text>
+                <line x1="0" y1="5" x2="5" y2="50" marker-end="url(#status-page_end-triangle)"/>
+                <line x1="25" y1="5" x2="25" y2="50" marker-end="url(#status-page_end-triangle)"/>
+                <line x1="50" y1="5" x2="45" y2="50" marker-end="url(#status-page_end-triangle)"/>
+              </g>
+              <g title="first-column" class="fragment" transform="translate(820 190)">
+                <text x="0" y="0" style="font-size: 0.7em" transform="rotate(-45) translate(35 0)">link to</text>
+                <text x="36" y="0" style="font-size: 0.7em" transform="rotate(-45) translate(-20 20)">Jenkins job</text>
+                <line x1="30" y1="5" x2="60" y2="110" marker-end="url(#status-page_end-triangle)"/>
+              </g>
+            </svg>
+            <a style="display: block; padding-right: 1em; text-align: right" href="http://repositories.ros.org/status_page/ros_kinetic_default.html">repositories.ros.org/status_page/(ros_kinetic_default.html)</a>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>"Decipher" Jenkins Job Names</h2>
+            <ul>
+              <li style="list-style-type: none"><b>Some example job names</b>
+                <ul>
+                  <li><code><span style="color: #0000ff">Isrc_uS</span>__<span style="color: #008000">roscpp</span>__<span style="color: #ffa500">ubuntu_saucy__source</span></code></li>
+                  <li><code><span style="color: #0000ff">Jdev</span>__<span style="color: #008000">ros_comm</span>__<span style="color: #ffa500">ubuntu_trusty_amd64</span></code></li>
+                  <li><code><span style="color: #0000ff">Kbin_uX64</span>__<span style="color: #008000">rospack</span>__<span style="color: #ffa500">ubuntu_xenial_amd64__binary</span></code><br/><br/></li>
+                  <li>Until first <code>__</code>: <span style="color: #0000ff">prefix for group of jobs</span></li>
+                  <li style="list-style-type: none"><img src="image/jenkins-views.png"/></li>
+                  <li>Until next <code>__</code>: <span style="color: #008000">the package or repository name</span></li>
+                  <li>Then <span style="color: #ffa500"><i>os name</i></span>, <span style="color: #ffa500"><i>os code name</i></span>, <span style="color: #ffa500"><i>arch</i></span> (except for source jobs), <br/><span style="color: #ffa500"><i>source</i></span> / <span style="color: #ffa500"><i>binary</i></span> (for release jobs)</li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+          <section>
+            <h2>Jenkins Statistics - Indigo</h2>
+            <table class="stats">
+              <tr><th>                </th><th>  count  </th><th>      success       </th><th>      unstable      </th><th>      failure       </th><th>      aborted       </th><th>      disabled      </th></tr>
+              <tr><th>                </th><td>         </td><td>                    </td><td>                    </td><td>                    </td><td>                    </td><td>                    </td></tr>
+              <tr><th>All             </th><td>  <span style="color: #0000ff">40751</span>  </td><td>  <span style="color: #008000">39634  (97.25 %)</span>  </td><td>    148   (0.36 %)  </td><td>    372   (0.91 %)  </td><td>    129   (0.31 %)  </td><td>    456   (1.11 %)  </td></tr>
+              <tr><th>Manage          </th><td>     91  </td><td>     91 (100.00 %)  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>                </th><td>         </td><td>                    </td><td>                    </td><td>                    </td><td>                    </td><td>                    </td></tr>
+              <tr><th>Ibin_arm_uThf   </th><td>   2348  </td><td>   1997  (85.05 %)  </td><td>                 -  </td><td>     16   (0.68 %)  </td><td>      8   (0.34 %)  </td><td>    <span style="color: #ffa500">327  (13.92 %)</span>  </td></tr>
+              <tr><th>Ibin_uS32       </th><td>   2348  </td><td>   2316  (98.63 %)  </td><td>                 -  </td><td>     22   (0.93 %)  </td><td>      9   (0.38 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>Ibin_uS64       </th><td>   2348  </td><td>   2314  (98.55 %)  </td><td>                 -  </td><td>     22   (0.93 %)  </td><td>     11   (0.46 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>Ibin_uT32       </th><td>   2348  </td><td>   2333  (99.36 %)  </td><td>                 -  </td><td>     12   (0.51 %)  </td><td>      3   (0.12 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>Ibin_uT64       </th><td>   2348  </td><td>   2334  (99.40 %)  </td><td>                 -  </td><td>     11   (0.46 %)  </td><td>      3   (0.12 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>Idev            </th><td>    769  </td><td>    645  (83.87 %)  </td><td>     26   (3.38 %)  </td><td>     <span style="color: #ff0000">98  (12.74 %)</span>  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>Idoc            </th><td>    807  </td><td>    756  (93.68 %)  </td><td>     31   (3.84 %)  </td><td>     16   (1.98 %)  </td><td>      1   (0.12 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>Ipr             </th><td>     29  </td><td>     20  (68.96 %)  </td><td>      3  (10.34 %)  </td><td>      2   (6.89 %)  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>Isrc_uS         </th><td>   2348  </td><td>   2348 (100.00 %)  </td><td>                 -  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>Isrc_uT         </th><td>   2348  </td><td>   2348 (100.00 %)  </td><td>                 -  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td></tr>
+            </table>
+          </section>
+          <section>
+            <h2>Jenkins Statistics - Kinetic</h2>
+            <table class="stats">
+              <tr><th>                </th><th>  count  </th><th>      success       </th><th>      unstable      </th><th>      failure       </th><th>      aborted       </th><th>      disabled      </th></tr>
+              <tr><th>                </th><td>         </td><td>                    </td><td>                    </td><td>                    </td><td>                    </td><td>                    </td></tr>
+              <tr><th>All             </th><td>  <span style="color: #0000ff">40751</span>  </td><td>  <span style="color: #008000">39634  (97.25 %)</span>  </td><td>    148   (0.36 %)  </td><td>    372   (0.91 %)  </td><td>    129   (0.31 %)  </td><td>    456   (1.11 %)  </td></tr>
+              <tr><th>Manage          </th><td>     91  </td><td>     91 (100.00 %)  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>                </th><td>         </td><td>                    </td><td>                    </td><td>                    </td><td>                    </td><td>                    </td></tr>
+              <tr><th>Kbin_dj_dJ64    </th><td>    953  </td><td>    922  (96.74 %)  </td><td>                 - </td><td>     15   (1.57 %)  </td><td>     14   (1.46 %)  </td><td>      2   (0.20 %)  </td></tr>
+              <tr><th>Kbin_djv8_dJv8  </th><td>    953  </td><td>    902  (94.64 %)  </td><td>                 - </td><td>     17   (1.78 %)  </td><td>     14   (1.46 %)  </td><td>     <span style="color: #008000">20   (2.09 %)</span>  </td></tr>
+              <tr><th>Kbin_uW32       </th><td>    953  </td><td>    928  (97.37 %)  </td><td>                 - </td><td>     14   (1.46 %)  </td><td>     11   (1.15 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>Kbin_uW64       </th><td>    953  </td><td>    928  (97.37 %)  </td><td>                 - </td><td>     14   (1.46 %)  </td><td>     11   (1.15 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>Kbin_uX32       </th><td>    953  </td><td>    928  (97.37 %)  </td><td>                 - </td><td>     14   (1.46 %)  </td><td>     11   (1.15 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>Kbin_uX64       </th><td>    953  </td><td>    928  (97.37 %)  </td><td>                 - </td><td>     14   (1.46 %)  </td><td>     11   (1.15 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>Kbin_uxhf_uXhf  </th><td>    953  </td><td>    905  (94.96 %)  </td><td>                 - </td><td>     14   (1.46 %)  </td><td>     11   (1.15 %)  </td><td>     <span style="color: #008000">23   (2.41 %)</span>  </td></tr>
+              <tr><th>Kbin_uxhf_uXv8  </th><td>    953  </td><td>    907  (95.17 %)  </td><td>                 - </td><td>     15   (1.57 %)  </td><td>     11   (1.15 %)  </td><td>     <span style="color: #008000">20   (2.09 %)</span>  </td></tr>
+              <tr><th>Kdev            </th><td>    296  </td><td>    220  (74.32 %)  </td><td>     <span style="color: #ffa500">49  (16.55 %)</span>  </td><td>     <span style="color: #ff0000">27   (9.12 %)</span>  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>Kdoc            </th><td>    310  </td><td>    294  (94.83 %)  </td><td>     11   (3.54 %)  </td><td>      4   (1.29 %)  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>Kpr             </th><td>     30  </td><td>     23  (76.66 %)  </td><td>      2   (6.66 %)  </td><td>      2   (6.66 %)  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>Ksrc_dJ         </th><td>    953  </td><td>    950  (99.68 %)  </td><td>                 -  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td><td>      8   (0.85 %)  </td></tr>
+              <tr><th>Ksrc_uW         </th><td>    953  </td><td>    953 (100.00 %)  </td><td>                 -  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td></tr>
+              <tr><th>Ksrc_uX         </th><td>    953  </td><td>    953 (100.00 %)  </td><td>                 -  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td><td>      0   (0.00 %)  </td></tr>
+            </table>
+          </section>
+          <section>
+            <h2>Resources for Jenkins</h2>
+            <ul>
+              <li style="list-style-type: none"><span style="color: #44497a">Hosted at Amazon</span>
+                <ul>
+                  <li>1 x Jenkins master (beefy machine)</li>
+                  <li>1 x Webserver</li>
+                  <li>2 x Nodes (always available)</li>
+                  <li>N x Nodes (spot instances when necessary)</li>
+                  <li style="list-style-type: none">&nbsp;&nbsp;&rarr; $1,000 - $2,000 per month</li>
+                </ul>
+              </li>
+              <li style="list-style-type: none"><br/><span style="color: #44497a">E.g. in September 2016</span>
+                <ul>
+                  <li>Jenkins ran ~80k builds</li>
+                  <li>Which equates to ~10k hours of work</li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>Run "Jobs" Locally</h2>
+            <ul>
+              <li style="list-style-type: none">The build farm is powered by the Python package <a href="https://github.com/ros-infrastructure/ros_buildfarm">ros_buildfarm</a></li>
+              <li style="list-style-type: none">After installing it:
+                <ul>
+                  <li>Debian package <code>python-ros-buildfarm</code></li>
+                  <li>PyPI <code>ros_buildfarm</code></li>
+                </ul>
+              </li>
+              <li style="list-style-type: none">You can run:
+                <ul>
+                  <li><a href="https://github.com/ros-infrastructure/ros_buildfarm/blob/master/doc/jobs/devel_jobs.rst#run-the-devel-job-locally">generate_devel_script.py</a> &lt;many args&gt;</li>
+                  <li><a href="https://github.com/ros-infrastructure/ros_buildfarm/blob/master/doc/jobs/doc_jobs.rst#run-the-doc-job-locally">generate_doc_script.py</a> &lt;many args&gt;</li>
+                  <li><a href="https://github.com/ros-infrastructure/ros_buildfarm/blob/master/doc/jobs/release_jobs.rst#run-the-release-job-locally">generate_release_script.py</a> &lt;many args&gt;</li>
+                </ul>
+              </li>
+              <li style="list-style-type: none"><br/>
+                <ul>
+                  <li>to easily reproduce results of the build farm</li>
+                  <li>run "jobs" for any target platform (within Docker) locally</li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+          <section>
+            <h2>Test Across Multiple Repos</h2>
+            <ul>
+              <li style="list-style-type: none">&#9312;&nbsp;&nbsp;You make related changes in different repos, e.g.
+                <ul>
+                  <li><span style="color: #44497a">repo A</span>: add a new API</li>
+                  <li><span style="color: #44497a">repo B</span>: use the new API</li>
+                  <li style="list-style-type: none">&nbsp;&nbsp;&rarr; The devel / PR jobs won't work for this case <span style="color: #c7254e">&#9785;</span>
+                    <ul>
+                      <li><span style="color: #44497a">repo A</span>: passes but doesn't really check the new API</li>
+                      <li><span style="color: #44497a">repo B</span>: <code>fails</code> because it's using the <b>last released version</b> of A</li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li style="list-style-type: none" class="fragment"><br/>&#9313;&nbsp;&nbsp;You want to check if your changes break any downstream packages
+                <ul>
+                  <li><span style="color: #44497a">repo A</span>: make some changes</li>
+                  <li><span style="color: #44497a">repo B</span>: check that the tests for the last released version still pass</li>
+                  <li style="list-style-type: none">&nbsp;&nbsp;&rarr; The devel / PR jobs don't cover for this case either <span style="color: #c7254e">&#9785;</span></li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+          <section>
+            <h2>Prerelease "Job"</h2>
+            <svg id="prerelease" width="700" height="550" xmlns:xlink= "http://www.w3.org/1999/xlink">
+              <marker id="prerelease_end-triangle" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="4" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z"/>
+              </marker>
+              <!--
+              <marker id="prerelease_end-triangle-gray" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="strokeWidth" markerWidth="5" markerHeight="4" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" style="fill: #cccccc;"/>
+              </marker>
+              -->
+              <g title="underlay" transform="translate(0 250)">
+                <circle cx="200" cy="0" r="20" fill="none" stroke="#0000ff" stroke-width="3"/>
+                <circle cx="200" cy="0" r="15" fill="none" stroke="#0000ff" stroke-width="3"/>
+                <circle cx="300" cy="0" r="20" fill="none" stroke="#0000ff" stroke-width="3"/>
+                <circle cx="300" cy="0" r="15" fill="none" stroke="#0000ff" stroke-width="3"/>
+                <rect x="160" y="-40" width="180" height="80" style="stroke: #0000ff"/>
+                <text x="285" y="-45" style="fill: #0000ff; stroke: #0000ff; font-size: 0.6em">underlay workspace</text>
+              </g>
+              <g title="underlay-deps" transform="translate(0 350)" class="fragment" data-fragment-index="1">
+                <line x1="190" y1="-80" x2="160" y2="-20" marker-end="url(#prerelease_end-triangle)"/>
+                <circle cx="150" cy="0" r="20" fill="none" stroke="#ffa500" stroke-width="3"/>
+                <line x1="210" y1="-80" x2="240" y2="-20" marker-end="url(#prerelease_end-triangle)"/>
+                <line x1="290" y1="-80" x2="260" y2="-20" marker-end="url(#prerelease_end-triangle)"/>
+                <circle cx="250" cy="0" r="20" fill="none" stroke="#ffa500" stroke-width="3"/>
+                <line x1="310" y1="-80" x2="340" y2="-20" marker-end="url(#prerelease_end-triangle)"/>
+                <circle cx="350" cy="0" r="20" fill="none" stroke="#ffa500" stroke-width="3"/>
+                <g transform="translate(0 100)">
+                  <line x1="140" y1="-80" x2="110" y2="-20" marker-end="url(#prerelease_end-triangle)"/>
+                  <circle cx="100" cy="0" r="20" fill="none" stroke="#ffa500" stroke-width="3"/>
+                  <line x1="160" y1="-80" x2="190" y2="-20" marker-end="url(#prerelease_end-triangle)"/>
+                  <line x1="240" y1="-80" x2="210" y2="-20" marker-end="url(#prerelease_end-triangle)"/>
+                  <circle cx="200" cy="0" r="20" fill="none" stroke="#ffa500" stroke-width="3"/>
+                  <line x1="260" y1="-80" x2="290" y2="-20" marker-end="url(#prerelease_end-triangle)"/>
+                  <line x1="340" y1="-80" x2="310" y2="-20" marker-end="url(#prerelease_end-triangle)"/>
+                  <circle cx="300" cy="0" r="20" fill="none" stroke="#ffa500" stroke-width="3"/>
+                  <line x1="360" y1="-80" x2="390" y2="-20" marker-end="url(#prerelease_end-triangle)"/>
+                  <circle cx="400" cy="0" r="20" fill="none" stroke="#ffa500" stroke-width="3"/>
+                </g>
+                <!--
+                <g title="other" transform="translate(0 -100)">
+                  <circle cx="400" cy="0" r="20" fill="none" stroke="#cccccc" stroke-width="3"/>
+                  <line x1="390" y1="20" x2="360" y2="80" marker-end="url(#prerelease_end-triangle-gray)" style="stroke: #cccccc;"/>
+                  <circle cx="450" cy="100" r="20" fill="none" stroke="#cccccc" stroke-width="3"/>
+                  <line x1="440" y1="120" x2="410" y2="180" marker-end="url(#prerelease_end-triangle-gray)" style="stroke: #cccccc;"/>
+                </g>
+                -->
+              </g>
+              <g title="overlay" transform="translate(0 50)" class="fragment" data-fragment-index="3">
+                <circle cx="100" cy="0" r="20" fill="none" stroke="#008000" stroke-width="3"/>
+                <circle cx="100" cy="0" r="15" fill="none" stroke="#008000" stroke-width="3"/>
+                <circle cx="200" cy="0" r="20" fill="none" stroke="#008000" stroke-width="3"/>
+                <circle cx="200" cy="0" r="15" fill="none" stroke="#008000" stroke-width="3"/>
+                <circle cx="300" cy="0" r="20" fill="none" stroke="#008000" stroke-width="3"/>
+                <circle cx="300" cy="0" r="15" fill="none" stroke="#008000" stroke-width="3"/>
+              </g>
+              <g title="overlay-implicit" transform="translate(0 150)" class="fragment" data-fragment-index="4">
+                <line x1="110" y1="-80" x2="140" y2="-20" marker-end="url(#prerelease_end-triangle)"/>
+                <circle cx="150" cy="0" r="20" fill="none" stroke="#008000" stroke-width="3"/>
+                <line x1="190" y1="-80" x2="160" y2="-20" marker-end="url(#prerelease_end-triangle)"/>
+                <line x1="210" y1="-80" x2="240" y2="-20" marker-end="url(#prerelease_end-triangle)"/>
+                <circle cx="250" cy="0" r="20" fill="none" stroke="#008000" stroke-width="3"/>
+                <line x1="290" y1="-80" x2="260" y2="-20" marker-end="url(#prerelease_end-triangle)"/>
+                <line x1="160" y1="20" x2="190" y2="80" marker-end="url(#prerelease_end-triangle)"/>
+                <line x1="240" y1="20" x2="210" y2="80" marker-end="url(#prerelease_end-triangle)"/>
+                <line x1="260" y1="20" x2="290" y2="80" marker-end="url(#prerelease_end-triangle)"/>
+                <polygon points="35,-140 365,-140 265,40 135,40" style="fill:none; stroke: #008000; stroke-width: 3px;"/>
+                <!--
+                <g title="other" transform="translate(0 -100)">
+                  <circle cx="300" cy="0" r="20" fill="none" stroke="#cccccc" stroke-width="3"/>
+                  <line x1="290" y1="20" x2="260" y2="80" marker-end="url(#prerelease_end-triangle-gray)" style="stroke: #cccccc;"/>
+                  <circle cx="350" cy="100" r="20" fill="none" stroke="#cccccc" stroke-width="3"/>
+                  <line x1="340" y1="120" x2="310" y2="180" marker-end="url(#prerelease_end-triangle-gray)" style="stroke: #cccccc;"/>
+                </g>
+              -->
+                <text x="370" y="-130" style="fill: #008000; stroke: #008000; font-size: 0.6em">overlay workspace</text>
+              </g>
+              <g title="overlay-deps" transform="translate(0 150)" class="fragment" data-fragment-index="5">
+                <line x1="90" y1="-80" x2="60" y2="-20" marker-end="url(#prerelease_end-triangle)"/>
+                <circle cx="50" cy="0" r="20" fill="none" stroke="#ffa500" stroke-width="3"/>
+                <line x1="60" y1="20" x2="90" y2="80" marker-end="url(#prerelease_end-triangle)"/>
+                <line x1="140" y1="20" x2="110" y2="80" marker-end="url(#prerelease_end-triangle)"/>
+                <circle cx="100" cy="100" r="20" fill="none" stroke="#ffa500" stroke-width="3"/>
+                <line x1="90" y1="120" x2="60" y2="180" marker-end="url(#prerelease_end-triangle)"/>
+                <line x1="110" y1="120" x2="140" y2="180" marker-end="url(#prerelease_end-triangle)" stroke-dasharray="5,5"/>
+                <circle cx="50" cy="200" r="20" fill="none" stroke="#ffa500" stroke-width="3"/>
+                <line x1="310" y1="-80" x2="340" y2="-20" marker-end="url(#prerelease_end-triangle)"/>
+                <circle cx="350" cy="0" r="20" fill="none" stroke="#ffa500" stroke-width="3"/>
+              </g>
+              <g title="legend" transform="translate(500 50)">
+                <g>
+                  <circle cx="0" cy="0" r="15" fill="none" stroke="#0000ff" stroke-width="3"/>
+                  <circle cx="0" cy="0" r="10" fill="none" stroke="#0000ff" stroke-width="3"/>
+                  <text x="20" y="6" style="fill: #353535; stroke: #353535; font-size: 0.6em">Selected source repos</text>
+                </g>
+                <g class="fragment" transform="translate(0 50)" data-fragment-index="1">
+                  <line x1="0" y1="-15" x2="0" y2="15" marker-end="url(#prerelease_end-triangle)"/>
+                  <text x="20" y="6" style="fill: #353535; stroke: #353535; font-size: 0.6em">Dependencies</text>
+                  <circle cx="0" cy="50" r="15" fill="none" stroke="#ffa500" stroke-width="3"/>
+                  <text x="20" y="56" style="fill: #353535; stroke: #353535; font-size: 0.6em">Deps from Debian pkgs</text>
+                </g>
+                <g class="fragment" transform="translate(0 150)" data-fragment-index="3">
+                  <circle cx="0" cy="0" r="15" fill="none" stroke="#008000" stroke-width="3"/>
+                  <circle cx="0" cy="0" r="10" fill="none" stroke="#008000" stroke-width="3"/>
+                  <text x="20" y="6" style="fill: #353535; stroke: #353535; font-size: 0.6em">Selected overlay repos</text>
+                </g>
+                <g class="fragment" transform="translate(0 200)" data-fragment-index="4">
+                  <circle cx="0" cy="0" r="15" fill="none" stroke="#008000" stroke-width="3"/>
+                  <text x="20" y="6" style="fill: #353535; stroke: #353535; font-size: 0.6em">Implicit overlay repos</text>
+                </g>
+                <!--
+                <g class="fragment" transform="translate(0 250)" data-fragment-index="1">
+                  <circle cx="0" cy="0" r="15" fill="none" stroke="#cccccc" stroke-width="3"/>
+                  <text x="20" y="6" style="fill: #353535; stroke: #353535; font-size: 0.6em">Unrelated, unneccesary</text>
+                </g>
+                -->
+              </g>
+            </svg>
+            <a style="display: block; padding-right: 2em; text-align: right" href="http://prerelease.ros.org">prerelease.ros.org</a>
+            <pre class="fragment current-visible" data-fragment-index="2" style="position: absolute; top:24%; left: 22%; width: 35%; padding: 1em"><code class="file xml" data-trim data-noescape>
+<mark>Devel job with multiple repos</mark>
+            </code></pre>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>Supported Targets</h2>
+            <ul>
+              <li style="list-style-type: none">The build farm <b>can</b> produce binary packages for
+                <ul>
+                  <li>Ubuntu, Debian</li>
+                  <li>amd64, i386, arm64, armhf</li>
+                </ul>
+              </li>
+              <li style="list-style-type: none"><br/>We can't cover all combinations (<i class="glyphicon glyphicon-usd" style="font-size: 0.8em"></i> and <i class="glyphicon glyphicon-user" style="font-size: 0.8em"></i>), for <b>Kinetic</b> we cover
+                <ul>
+                  <li>Ubuntu: Xenial &amp; Wily amd64 &amp; i386, Xenial arm64 &amp; armhf</li>
+                  <li>Debian: Jessie amd64 &amp; arm64</li>
+                </ul>
+              </li>
+              <li style="list-style-type: none"><br/>Bloom also generates meta information for <code>rpm</code> (Fedora)
+                <ul>
+                  <li>But we don't build binary packages (yet?)</li>
+                </ul>
+              </li>
+              <li style="list-style-type: none"><br/>If you want to create binaries for a not supported target
+                <ul>
+                  <li>Talk to us <span style="font-size: 0.8em">(&lt;hint&gt; donations as well as time to support efforts helps &#128521;)</span></li>
+                  <li>Contribute code to automate building binaries for new targets</li>
+                  <li>or [see next slide]</li>
+                </ul>
+              </li>
+            </ul>
+
+            <aside class="notes">
+              <ul>
+                <li>Survey: who in the room uses a 32-bit Ubuntu on a normal machine (no embedded)?</li>
+                <li>Which version of Ubuntu are you using: Xenial, Trusty, Precise? Any EOL versions?</li>
+              </ul>
+            </aside>
+          </section>
+          <section>
+            <h2>Your Own Build Farm</h2>
+            <ul>
+              <li style="list-style-type: none">Use cases
+                <ul>
+                  <li>Build a different OS name / OS code name / architecture combination</li>
+                  <li>Process private repositories
+                    <ul>
+                      <li>You will need your own rosdistro database</li>
+                    </ul>
+                  </li>
+                  <li>Try modified version of the build farm</li>
+                </ul>
+              </li>
+              <li style="list-style-type: none"><br/>Two step process [<a href="http://wiki.ros.org/buildfarm">wiki.ros.org/buildfarm</a>]
+                <ol>
+                  <li>Provision machines:
+                    <ul>
+                      <li>Jenkins master, Apache webserver, Build nodes</li>
+                    </ul>
+                  </li>
+                  <li>Generate the Jenkins jobs
+                    <ul>
+                      <li>Many <a href="https://github.com/ros-infrastructure/ros_buildfarm/blob/master/doc/configure_customized_buildfarm.rst">configuration options</a></li>
+                    </ul>
+                  </li>
+                </ol>
+              </li>
+              <li style="list-style-type: none"><br/>Last years presentation from Bosch: [<a href="http://roscon.ros.org/2015/presentations/Buildfarm.pdf">pdf</a>]</li>
+            </ul>
+            <p style="border: 1px solid #ffa500; color: #ffa500; margin: 0.6em 0 0 48%; padding: 0.5em 0.5em 0.5em 0.25em; width: 40%">
+              <i class="glyphicon glyphicon-hand-up" style="font-size: 0.8em"></i>&nbsp;&nbsp; Expect continuous effort
+            </p>
+            <p>
+              <img src="image/bosch.jpg" width="20%" style="position: absolute; top: 36%; right: 0; width: 25%" alt=""/>
+              <img src="image/clearpath.png" width="20%" style="position: absolute; top: 64%; right: 0; width: 25%" alt=""/>
+            </p>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>What Can You Do</h2>
+            <ul>
+              <li style="list-style-type: none"><span style="color: #44497a"><b>Register your repositories</b></span>
+                <ul>
+                  <li>add <code>doc</code> entry to generate documentation
+                    <ul>
+                      <li>create a wiki page for your packages</li>
+                    </ul>
+                  </li>
+                  <li>add <code>source</code> entry for devel jobs and easy cloning for users
+                    <ul>
+                      <li>if the devel job fails, don't remove the entry, only disable the job:<br/>
+                        <pre style="margin-right: 70%; width: 25%"><code>test_commits: false</code></pre>
+                      </li>
+                      <li>e.g. your repo depends on other packages which are not released</li>
+                    </ul>
+                  </li>
+                  <li>consider enabling <code>pull request testing</code></li>
+                  <li><code>release</code> your packages, also into newer ROS distros</li>
+                </ul>
+              </li>
+              <li style="list-style-type: none"><br/><span style="color: #44497a"><b>Watch out for notification emails from Jenkins</b></span>
+                <ul>
+                  <li>read it, search for the problem, try to fix it, ask for help</li>
+                  <li>as a last resort: disable the job, blacklist target, remove the release</li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+          <section>
+            <h2>Troubleshooting</h2>
+            <ul>
+              <li style="list-style-type: none"><span style="color: #44497a">"It works locally but the job fails"</span> &rarr; something must be different
+                <ul style="font-size: 0.9em">
+                  <li>Have you tried using `catkin_make_isolated`?</li>
+                  <li>Most commonly you have a dependency installed but the build farm doesn't. Check the declared dependencies.
+                    <pre style="width: 101%"><code>CMake Error at /opt/ros/kinetic/share/catkin/cmake/catkinConfig.cmake:83 (find_package):
+  Could not find a package configuration file provided by "&lt;pkg_name&gt;"</code></pre>
+                  </li>
+                </ul>
+              </li>
+              <li style="list-style-type: none"><span style="color: #44497a">"The devel job passed but the release failed"</span>
+                <ul style="font-size: 0.9em">
+                  <li>In a devel job all packages share the same container. One package might declare a dependency another package uses without declaring it itself.</li>
+                </ul>
+              </li>
+              <li style="list-style-type: none"><span style="color: #44497a">Expect (very rarely) all kinds of "hiccups"</span>
+                <ul style="font-size: 0.9em">
+                  <li>apt update failing since the repository is being modified concurrently</li>
+                  <li>network problems, GitHub resetting the connection, an http request not being handled, ...</li>
+                  <li>If your problem persists it's probably not such a hiccup</li>
+                </ul>
+              </li>
+            </ul>
+          </section>
         </section>
 
         <section>
